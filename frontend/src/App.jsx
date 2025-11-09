@@ -14,28 +14,69 @@ export default function App() {
   const [toast, setToast] = useState(null)
 
   useEffect(() => {
-    // Получаем данные из Telegram
-    if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
-      const tgUser = window.Telegram.WebApp.initDataUnsafe.user;
+    initializeUser()
+  }, [])
+
+  const initializeUser = async () => {
+    try {
+      // ✅ Получаем данные из Telegram
+      const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+      const initData = window.Telegram?.WebApp?.initData;
+
+      if (tgUser && initData) {
+        console.log('👤 Telegram user:', tgUser);
+        
+        // ✅ Отправляем на Backend для регистрации/поиска
+        const response = await fetch(
+          'https://safetyai-perplexity.vercel.app/api/auth/validate',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${initData}`
+            }
+          }
+        );
+
+        const data = await response.json();
+
+        if (data.success && data.user) {
+          console.log('✅ User authenticated:', data.user);
+          setUser(data.user);
+        } else {
+          console.error('Auth failed:', data.error);
+          // Demo mode
+          setUser({
+            id: 'demo-' + Date.now(),
+            firstName: 'Demo',
+            lastName: 'User',
+            username: 'demo',
+            telegramId: 0
+          });
+        }
+      } else {
+        // Demo mode если нет Telegram данных
+        setUser({
+          id: 'demo-' + Date.now(),
+          firstName: 'Demo',
+          lastName: 'User',
+          username: 'demo',
+          telegramId: 0
+        });
+      }
+    } catch (error) {
+      console.error('Init error:', error);
       setUser({
-        id: tgUser.id,
-        firstName: tgUser.first_name,
-        lastName: tgUser.last_name || '',
-        username: tgUser.username || '',
-        telegramId: tgUser.id
-      });
-    } else {
-      // Демо режим
-      setUser({
-        id: 'demo-1',
+        id: 'demo-' + Date.now(),
         firstName: 'Demo',
         lastName: 'User',
         username: 'demo',
-        telegramId: 12345
+        telegramId: 0
       });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }, [])
+  };
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type })
