@@ -12,47 +12,44 @@ router.post('/validate', async (req, res) => {
     const authHeader = req.headers.authorization;
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Missing authorization' });
+      return res.json({ 
+        success: false, 
+        error: 'No auth header' 
+      });
     }
 
     const initDataRaw = authHeader.replace('Bearer ', '');
-
-    // Если это тестовые данные
-    if (initDataRaw === 'test_init_data') {
-      const testUser = {
-        id: 'demo-1',
-        firstName: 'Demo',
-        lastName: 'User',
-        username: 'demo_user'
-      };
-      return res.json({ success: true, user: testUser });
-    }
 
     try {
       const params = new URLSearchParams(initDataRaw);
       const userString = params.get('user');
       
       if (!userString) {
-        return res.status(401).json({ error: 'No user data' });
+        return res.json({ 
+          success: false, 
+          error: 'No user data' 
+        });
       }
 
       const user = JSON.parse(userString);
 
-      // Проверяем есть ли пользователь в БД
+      // ✅ ИЩЕМ ПОЛЬЗОВАТЕЛЯ В БД
       let { data: existingUser, error: fetchError } = await supabase
         .from('users')
         .select('*')
         .eq('telegram_id', user.id)
         .single();
 
-      // Если пользователя нет - создаем
+      // ✅ ЕСЛИ НЕ НАЙДЕН - СОЗДАЕМ
       if (!existingUser) {
+        console.log('👤 Creating new user:', user.id);
+        
         const { data: newUser, error: insertError } = await supabase
           .from('users')
           .insert([
             {
               telegram_id: user.id,
-              first_name: user.first_name,
+              first_name: user.first_name || 'User',
               last_name: user.last_name || '',
               username: user.username || ''
             }
@@ -60,8 +57,15 @@ router.post('/validate', async (req, res) => {
           .select()
           .single();
 
-        if (insertError) throw insertError;
+        if (insertError) {
+          console.error('Insert error:', insertError);
+          throw insertError;
+        }
+
         existingUser = newUser;
+        console.log('✅ User created:', existingUser.id);
+      } else {
+        console.log('✅ User found:', existingUser.id);
       }
 
       res.json({
@@ -74,22 +78,20 @@ router.post('/validate', async (req, res) => {
           username: existingUser.username
         }
       });
+
     } catch (err) {
       console.error('Parse/DB error:', err);
-      // Даже если ошибка - даем доступ демо-пользователю
-      res.json({
-        success: true,
-        user: {
-          id: 'demo-1',
-          firstName: 'Demo',
-          lastName: 'User',
-          username: 'demo'
-        }
+      res.json({ 
+        success: false, 
+        error: err.message 
       });
     }
   } catch (error) {
     console.error('Auth error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
   }
 });
 
