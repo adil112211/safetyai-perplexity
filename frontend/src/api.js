@@ -86,3 +86,28 @@ export const getStats = async () => {
 };
 
 export default apiClient;
+export const getViolations = async () => {
+  try {
+    console.log('→ Fetching violations from:', API_URL);
+    const response = await apiClient.get('/api/violations/list');
+    console.log('✅ Violations received:', response.data);
+    return response.data.violations || [];
+  } catch (error) {
+    console.error('❌ getViolations error:', error);
+    return [];
+  }
+};
+
+export const createViolation = async (data) => {
+  try {
+    console.log('→ Creating violation:', data);
+    const response = await apiClient.post('/api/violations/create', data);
+    console.log('✅ Violation created:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ createViolation error:', error);
+    return null;
+  }
+};
+
+
