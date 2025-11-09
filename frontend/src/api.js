@@ -1,13 +1,13 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_URL = import.meta.env.VITE_API_URL || 'https://safetyai-perplexity.vercel.app';
+
+console.log('🔗 API URL:', API_URL);
 
 export const getInitData = () => {
-  // Если браузер поддерживает Telegram WebApp
   if (window.Telegram?.WebApp?.initData) {
     return window.Telegram.WebApp.initData;
   }
-  // Для локального тестирования
   return 'test_init_data';
 };
 
@@ -15,7 +15,8 @@ const apiClient = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
-  }
+  },
+  timeout: 30000
 });
 
 apiClient.interceptors.request.use((config) => {
@@ -23,96 +24,65 @@ apiClient.interceptors.request.use((config) => {
   if (initData) {
     config.headers.Authorization = `Bearer ${initData}`;
   }
+  console.log('📤 Request:', config.method.toUpperCase(), config.url);
   return config;
-}, (error) => Promise.reject(error));
+});
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('✅ Response:', response.status, response.data);
+    return response;
+  },
   (error) => {
-    if (error.response?.status === 401) {
-      window.location.href = '/login';
-    }
+    console.error('❌ Error:', error.response?.status, error.message);
     return Promise.reject(error);
   }
 );
 
-// Auth
-export const validateUser = async () => {
-  const response = await apiClient.post('/api/auth/validate');
-  return response.data.user;
-};
-
-// Courses
 export const getCourses = async () => {
-  const response = await apiClient.get('/api/courses/list');
-  return response.data.courses;
+  try {
+    console.log('→ Fetching courses from:', API_URL);
+    const response = await apiClient.get('/api/courses/list');
+    console.log('✅ Courses received:', response.data);
+    return response.data.courses || [];
+  } catch (error) {
+    console.error('❌ getCourses error:', error);
+    return [];
+  }
 };
 
-export const getCourseDetails = async (courseId) => {
-  const response = await apiClient.get(`/api/courses/${courseId}`);
-  return response.data.course;
-};
-
-// Tests
 export const getTests = async () => {
-  const response = await apiClient.get('/api/tests/list');
-  return response.data.tests;
+  try {
+    console.log('→ Fetching tests from:', API_URL);
+    const response = await apiClient.get('/api/tests/list');
+    console.log('✅ Tests received:', response.data);
+    return response.data.tests || [];
+  } catch (error) {
+    console.error('❌ getTests error:', error);
+    return [];
+  }
 };
 
-export const submitTest = async (testId, answers) => {
-  const response = await apiClient.post('/api/tests/submit', {
-    testId,
-    answers
-  });
-  return response.data;
+export const getLeaderboard = async () => {
+  try {
+    console.log('→ Fetching leaderboard from:', API_URL);
+    const response = await apiClient.get('/api/dashboard/leaderboard');
+    console.log('✅ Leaderboard received:', response.data);
+    return response.data.leaderboard || [];
+  } catch (error) {
+    console.error('❌ getLeaderboard error:', error);
+    return [];
+  }
 };
 
-// Certificates
-export const getCertificates = async () => {
-  const response = await apiClient.get('/api/certificates/list');
-  return response.data.certificates;
-};
-
-export const generateCertificate = async (resultId) => {
-  const response = await apiClient.post('/api/certificates/generate', {
-    resultId
-  });
-  return response.data.certificate;
-};
-
-// Violations
-export const createViolation = async (description, category, photoBase64 = null) => {
-  const response = await apiClient.post('/api/violations/create', {
-    description,
-    category,
-    photoBase64
-  });
-  return response.data.violation;
-};
-
-export const getViolations = async () => {
-  const response = await apiClient.get('/api/violations/list');
-  return response.data.violations;
-};
-
-// Dashboard
 export const getStats = async () => {
-  const response = await apiClient.get('/api/dashboard/stats');
-  return response.data.stats;
-};
-
-export const getLeaderboard = async (limit = 50) => {
-  const response = await apiClient.get(`/api/dashboard/leaderboard?limit=${limit}`);
-  return response.data.leaderboard;
-};
-
-// AI
-export const askAI = async (question, conversationHistory = []) => {
-  const response = await apiClient.post('/api/ai/ask', {
-    question,
-    conversationHistory
-  });
-  return response.data;
+  try {
+    const response = await apiClient.get('/api/dashboard/stats');
+    return response.data.stats || {};
+  } catch (error) {
+    console.error('❌ getStats error:', error);
+    return {};
+  }
 };
 
 export default apiClient;
