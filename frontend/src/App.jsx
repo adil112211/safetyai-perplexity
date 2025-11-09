@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { getStats } from './api'
 import Dashboard from './pages/Dashboard'
 import Courses from './pages/Courses'
 import Tests from './pages/Tests'
@@ -11,18 +10,31 @@ import './styles.css'
 export default function App() {
   const [currentPage, setCurrentPage] = useState('dashboard')
   const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
 
   useEffect(() => {
-    // Сразу устанавливаем демо-пользователя
-    setUser({
-      id: 1,
-      firstName: 'Demo',
-      lastName: 'User',
-      username: 'demo_user'
-    })
-    setLoading(false)
+    // Получаем данные из Telegram
+    if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
+      const tgUser = window.Telegram.WebApp.initDataUnsafe.user;
+      setUser({
+        id: tgUser.id,
+        firstName: tgUser.first_name,
+        lastName: tgUser.last_name || '',
+        username: tgUser.username || '',
+        telegramId: tgUser.id
+      });
+    } else {
+      // Демо режим
+      setUser({
+        id: 'demo-1',
+        firstName: 'Demo',
+        lastName: 'User',
+        username: 'demo',
+        telegramId: 12345
+      });
+    }
+    setLoading(false);
   }, [])
 
   const showToast = (message, type = 'success') => {
